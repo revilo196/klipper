@@ -45,7 +45,6 @@ static const struct i2c_info i2c_bus[] = {
     { I2C3, GPIO('H', 7), GPIO('H', 8) },
   #endif
 #endif
-};
 
 // Work around stm32 errata causing busy bit to be stuck
 static void
