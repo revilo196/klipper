@@ -6,6 +6,7 @@
 
 #include "basecmd.h" // oid_alloc
 #include "board/gpio.h" // struct gpio
+#include "board/irq.h" // irq_disable
 #include "command.h" // DECL_COMMAND
 #include "sched.h" // struct timer
 #include "trsync.h" // trsync_do_trigger
@@ -103,7 +104,11 @@ command_endstop_query_state(uint32_t *args)
 {
     uint8_t oid = args[0];
     struct endstop *e = oid_lookup(oid, command_config_endstop);
-    sendf("endstop_state oid=%c homing=%c pin_value=%c"
-          , oid, !!(e->flags & ESF_HOMING), gpio_in_read(e->pin));
+    irq_disable();
+    uint8_t flags = e->flags;
+    uint32_t nextwake = e->nextwake;
+    irq_enable();
+    sendf("endstop_state oid=%c homing=%c next_clock=%u pin_value=%c"
+          , oid, !!(flags & ESF_HOMING), nextwake, gpio_in_read(e->pin));
 }
 DECL_COMMAND(command_endstop_query_state, "endstop_query_state oid=%c");
