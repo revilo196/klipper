@@ -10,6 +10,8 @@
 #include "board/usb_cdc.h" // usb_request_bootloader
 #include "internal.h" // enable_pclock
 #include "sched.h" // sched_main
+#include "board/internal.h" // NVIC_SystemReset
+#include "command.h" // DECL_COMMAND_FLAGS
 
 #define FREQ_PERIPH (CONFIG_CLOCK_FREQ / 2)
 
@@ -251,3 +253,21 @@ armcm_main(void)
 
     sched_main();
 }
+
+#define RAM_START  0x20000000
+#define RAM_START_lo  ((uint32_t*) (RAM_START))
+#define RAM_START_hi  ((uint32_t*) (RAM_START+4))
+#define RAM_START_arg ((uint8_t*)  (RAM_START+7))
+
+#define magic_value_lo    0x01234567
+#define magic_value_hi    0x0089abcd
+
+void bootloder_call(uint32_t *args) 
+{
+    (*RAM_START_lo) = magic_value_lo;
+    (*RAM_START_hi) = magic_value_hi;
+    (*RAM_START_arg) = 1; // bootloader without timeout
+    NVIC_SystemReset();
+}
+DECL_COMMAND(bootloder_call, "bootloader");
+
