@@ -14,10 +14,10 @@
 #include "board/internal.h" // NVIC_SystemReset
 #include "command.h" // DECL_COMMAND_FLAGS
 
-
 /****************************************************************
  * Clock setup
  ****************************************************************/
+
 
 #define FREQ_PERIPH (CONFIG_CLOCK_FREQ / 2)
 
