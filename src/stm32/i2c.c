@@ -19,6 +19,7 @@ struct i2c_info {
 
 DECL_ENUMERATION("i2c_bus", "i2c1", 0);
 DECL_CONSTANT_STR("BUS_PINS_i2c1", "PB6,PB7");
+<<<<<<< HEAD
 DECL_ENUMERATION("i2c_bus", "i2c1a", 1);
 DECL_CONSTANT_STR("BUS_PINS_i2c1a", "PB8,PB9");
 DECL_ENUMERATION("i2c_bus", "i2c2", 2);
