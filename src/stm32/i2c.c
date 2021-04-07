@@ -19,7 +19,8 @@ struct i2c_info {
 
 DECL_ENUMERATION("i2c_bus", "i2c1", 0);
 DECL_CONSTANT_STR("BUS_PINS_i2c1", "PB6,PB7");
-DECL_CONSTANT_STR("BUS_PINS_i2c2", "PH4,PH5");
+DECL_ENUMERATION("i2c_bus", "i2c2", 1);
+DECL_CONSTANT_STR("BUS_PINS_i2c2", "PH7,PH8");
 
 static const struct i2c_info i2c_bus[] = {
     { I2C1, GPIO('B', 6), GPIO('B', 7) },
