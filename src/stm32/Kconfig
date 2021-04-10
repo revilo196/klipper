@@ -39,6 +39,7 @@ choice
         select MACH_STM32F4
     config MACH_STM32F407
         bool "STM32F407"
+	select HAVE_GPIO_HARD_PWM
         select MACH_STM32F4
     config MACH_STM32F429
         bool "STM32F429"
@@ -134,6 +135,8 @@ choice
     prompt "Bootloader offset" if MACH_STM32F207 || MACH_STM32F407 || MACH_STM32F405 || MACH_STM32F103 || MACH_STM32F070
     config STM32_FLASH_START_2000
         bool "8KiB bootloader (stm32duino)" if MACH_STM32F103 || MACH_STM32F070
+    config STM32_FLASH_START_3000
+        bool "12KiB bootloader (can)" if MACH_STM32F103
     config STM32_FLASH_START_5000
         bool "20KiB bootloader" if MACH_STM32F103
     config STM32_FLASH_START_7000
@@ -159,6 +162,7 @@ config FLASH_START
     hex
     default 0x8000800 if STM32_FLASH_START_800
     default 0x8002000 if STM32_FLASH_START_2000
+    default 0x8003000 if STM32_FLASH_START_3000
     default 0x8004000 if STM32_FLASH_START_4000
     default 0x8005000 if STM32_FLASH_START_5000
     default 0x8007000 if STM32_FLASH_START_7000
