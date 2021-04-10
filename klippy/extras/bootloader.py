@@ -25,7 +25,7 @@ class Bootloader:
 
     def cmd_BOOTLOADER(self, gcmd):
         self._set_cmd.send()
-        self.printer.invoke_shutdown("MCU " + self.mcu_name + " goes into Bootloader")
+        #self.printer.invoke_shutdown("MCU " + self.mcu_name + " goes into Bootloader")
 
 def load_config_prefix(config):
     return Bootloader(config)
