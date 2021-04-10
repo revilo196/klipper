@@ -19,13 +19,30 @@ struct i2c_info {
 
 DECL_ENUMERATION("i2c_bus", "i2c1", 0);
 DECL_CONSTANT_STR("BUS_PINS_i2c1", "PB6,PB7");
-DECL_ENUMERATION("i2c_bus", "i2c2", 1);
-DECL_CONSTANT_STR("BUS_PINS_i2c2", "PH7,PH8");
+DECL_ENUMERATION("i2c_bus", "i2c1a", 1);
+DECL_CONSTANT_STR("BUS_PINS_i2c1a", "PB8,PB9");
+DECL_ENUMERATION("i2c_bus", "i2c2", 2);
+DECL_CONSTANT_STR("BUS_PINS_i2c2", "PB10,PB11");
 
+#if CONFIG_MACH_STM32F4
+DECL_ENUMERATION("i2c_bus", "i2c3", 3);
+DECL_CONSTANT_STR("BUS_PINS_i2c3", "PH7,PH8");
 static const struct i2c_info i2c_bus[] = {
     { I2C1, GPIO('B', 6), GPIO('B', 7) },
+    { I2C1, GPIO('B', 8), GPIO('B', 9) },
+    { I2C2, GPIO('B', 10), GPIO('B', 11) },
     { I2C3, GPIO('H', 7), GPIO('H', 8) },
 };
+#else
+static const struct i2c_info i2c_bus[] = {
+    { I2C1, GPIO('B', 6), GPIO('B', 7) },
+    { I2C1, GPIO('B', 8), GPIO('B', 9) },
+    { I2C2, GPIO('B', 10), GPIO('B', 11) },
+};
+#endif
+
+
+
 
 // Work around stm32 errata causing busy bit to be stuck
 static void
