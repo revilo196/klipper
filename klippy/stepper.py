@@ -32,7 +32,6 @@ class MCU_stepper:
         self._dir_pin = dir_pin_params['pin']
         self._invert_dir = dir_pin_params['invert']
         self._mcu_position_offset = self._tag_position = 0.
-        self._min_stop_interval = 0.
         self._reset_cmd_tag = self._get_position_cmd = None
         self._active_callbacks = []
         ffi_main, ffi_lib = chelper.get_ffi()
@@ -43,6 +42,8 @@ class MCU_stepper:
         self._itersolve_generate_steps = ffi_lib.itersolve_generate_steps
         self._itersolve_check_active = ffi_lib.itersolve_check_active
         self._trapq = ffi_main.NULL
+        self._mcu.get_printer().register_event_handler('klippy:connect',
+                                                       self._query_mcu_position)
     def get_mcu(self):
         return self._mcu
     def get_name(self, short=False):
@@ -56,26 +57,14 @@ class MCU_stepper:
         # Calculate the time it takes to travel a distance with constant accel
         time_offset = start_velocity / accel
         return math.sqrt(2. * dist / accel + time_offset**2) - time_offset
-    def set_max_jerk(self, max_halt_velocity, max_accel):
-        # Calculate the firmware's maximum halt interval time
-        last_step_time = self._dist_to_time(self._step_dist,
-                                            max_halt_velocity, max_accel)
-        second_last_step_time = self._dist_to_time(2. * self._step_dist,
-                                                   max_halt_velocity, max_accel)
-        self._min_stop_interval = second_last_step_time - last_step_time
     def setup_itersolve(self, alloc_func, *params):
         ffi_main, ffi_lib = chelper.get_ffi()
         sk = ffi_main.gc(getattr(ffi_lib, alloc_func)(*params), ffi_lib.free)
         self.set_stepper_kinematics(sk)
     def _build_config(self):
-        max_error = self._mcu.get_max_stepper_error()
-        min_stop_interval = max(0., self._min_stop_interval - max_error)
         self._mcu.add_config_cmd(
-            "config_stepper oid=%d step_pin=%s dir_pin=%s"
-            " min_stop_interval=%d invert_step=%d" % (
-                self._oid, self._step_pin, self._dir_pin,
-                self._mcu.seconds_to_clock(min_stop_interval),
-                self._invert_step))
+            "config_stepper oid=%d step_pin=%s dir_pin=%s invert_step=%d" % (
+                self._oid, self._step_pin, self._dir_pin, self._invert_step))
         self._mcu.add_config_cmd("reset_step_clock oid=%d clock=0"
                                  % (self._oid,), on_restart=True)
         step_cmd_tag = self._mcu.lookup_command_tag(
@@ -87,6 +76,7 @@ class MCU_stepper:
         self._get_position_cmd = self._mcu.lookup_query_command(
             "stepper_get_position oid=%c",
             "stepper_position oid=%c pos=%i", oid=self._oid)
+        max_error = self._mcu.get_max_stepper_error()
         ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.stepcompress_fill(self._stepqueue,
                                   self._mcu.seconds_to_clock(max_error),
@@ -124,11 +114,10 @@ class MCU_stepper:
         return self._tag_position
     def set_tag_position(self, position):
         self._tag_position = position
-    def get_past_commanded_position(self, clock):
+    def get_past_mcu_position(self, print_time):
+        clock = self._mcu.print_time_to_clock(print_time)
         ffi_main, ffi_lib = chelper.get_ffi()
-        sq = self._stepqueue
-        mcu_pos = ffi_lib.stepcompress_find_past_position(sq, clock)
-        return mcu_pos * self._step_dist - self._mcu_position_offset
+        return ffi_lib.stepcompress_find_past_position(self._stepqueue, clock)
     def set_stepper_kinematics(self, sk):
         old_sk = self._stepper_kinematics
         self._stepper_kinematics = sk
@@ -138,7 +127,7 @@ class MCU_stepper:
                                                self._step_dist)
             self.set_trapq(self._trapq)
         return old_sk
-    def note_homing_end(self, did_trigger=False):
+    def note_homing_end(self):
         ffi_main, ffi_lib = chelper.get_ffi()
         ret = ffi_lib.stepcompress_reset(self._stepqueue, 0)
         if ret:
@@ -147,16 +136,19 @@ class MCU_stepper:
         ret = ffi_lib.stepcompress_queue_msg(self._stepqueue, data, len(data))
         if ret:
             raise error("Internal error in stepcompress")
-        if not did_trigger or self._mcu.is_fileoutput():
+        self._query_mcu_position()
+    def _query_mcu_position(self):
+        if self._mcu.is_fileoutput():
             return
         params = self._get_position_cmd.send([self._oid])
         last_pos = params['pos']
+        if self._invert_dir:
+            last_pos = -last_pos
+        ffi_main, ffi_lib = chelper.get_ffi()
         ret = ffi_lib.stepcompress_set_last_position(self._stepqueue, last_pos)
         if ret:
             raise error("Internal error in stepcompress")
         mcu_pos_dist = last_pos * self._step_dist
-        if self._invert_dir:
-            mcu_pos_dist = -mcu_pos_dist
         self._mcu_position_offset = mcu_pos_dist - self.get_commanded_position()
     def set_trapq(self, tq):
         ffi_main, ffi_lib = chelper.get_ffi()
@@ -360,9 +352,6 @@ class PrinterRail:
     def set_trapq(self, trapq):
         for stepper in self.steppers:
             stepper.set_trapq(trapq)
-    def set_max_jerk(self, max_halt_velocity, max_accel):
-        for stepper in self.steppers:
-            stepper.set_max_jerk(max_halt_velocity, max_accel)
     def set_position(self, coord):
         for stepper in self.steppers:
             stepper.set_position(coord)
