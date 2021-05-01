@@ -802,6 +802,11 @@ Visual Examples:
 #   A point index in the mesh to reference all z values to. Enabling
 #   this parameter produces a mesh relative to the probed z position
 #   at the provided index.
+#faulty_region_1_min:
+#faulty_region_1_max:
+#   Optional points that define a faulty region.  See docs/Bed_Mesh.md
+#   for details on faulty regions.  Up to 99 faulty regions may be added.
+#   By default no faulty regions are set.
 ```
 
 ## [bed_tilt]
@@ -1515,6 +1520,10 @@ stepper_z config section.
 [probe]
 pin:
 #   Probe detection pin. This parameter must be provided.
+#deactivate_on_each_sample: True
+#   This determines if Klipper should execute deactivation gcode
+#   between each probe attempt when performing a multiple probe
+#   sequence. The default is True.
 #x_offset: 0.0
 #   The distance (in mm) between the probe and the nozzle along the
 #   x-axis. The default is 0.
@@ -3828,6 +3837,42 @@ host_mcu:
 #   (True sets CFG5 high, False sets it low). The default is True.
 ```
 
+# Other Custom Modules
+
+## [palette2]
+
+Palette 2 multimaterial support - provides a tighter integration
+supporting Palette 2 devices in connected mode.
+
+This modules also requires `[virtual_sdcard]` and `[pause_resume]`
+for full functionality.
+
+If you use this module, do not use the Palette 2 plugin for
+Octoprint as they will conflict, and 1 will fail to initialize
+properly likely aborting your print.
+
+If you use Octoprint and stream gcode over the serial port instead of
+printing from virtual_sd, then remo **M1** and **M0** from *Pausing commands*
+in *Settings > Serial Connection > Firmware & protocol* will prevent
+the need to start print on the Palette 2 and unpausing in Octoprint
+for your print to begin.
+
+```
+[palette2]
+serial:
+#   The serial port to connect to the Palette 2.
+#baud: 115200
+#   The baud rate to use. The default is 115200.
+#feedrate_splice: 0.8
+#   The feedrate to use when splicing, default is 0.8
+#feedrate_normal: 1.0
+#   The feedrate to use after splicing, default is 1.0
+#auto_load_speed: 2
+#   Extrude feedrate when autoloading, default is 2 (mm/s)
+#auto_cancel_variation: 0.1
+#   Auto cancel print when ping varation is above this threshold
+```
+
 # Common bus parameters
 
 ## Common SPI settings
@@ -3872,38 +3917,4 @@ I2C bus.
 #   The I2C speed (in Hz) to use when communicating with the device.
 #   On some micro-controllers changing this value has no effect. The
 #   default is 100000.
-```
-
-# Other Custom Modules
-
-## [palette2]
-
-Palette 2 multimaterial support - provides a tighter integration
-supporting Palette 2 devices in connected mode.
-
-This modules also requires `[virtual_sdcard]` and `[pause_resume]`
-for full functionality.
-
-If you use this module, do not use the Palette 2 plugin for
-Octoprint as they will conflict, and 1 will fail to initialize
-properly likely aborting your print.
-
-If you use Octoprint and stream gcode over the serial port instead of
-printing from virtual_sd, then remo **M1** and **M0** from *Pausing commands*
-in *Settings > Serial Connection > Firmware & protocol* will prevent
-the need to start print on the Palette 2 and unpausing in Octoprint
-for your print to begin.
-
-```
-[palette2]
-serial:
-#   The serial port to connect to the Palette 2.
-#baud: 250000
-#   The baud rate to use. The default is 250000.
-#feedrate_splice: 0.8
-#   The feedrate to use when splicing, default is 0.8
-#feedrate_normal: 1.0
-#   The feedrate to use after splicing, default is 1.0
-#auto_load_speed: 2
-#   Extrude feedrate when autoloading, default is 2 (mm/s)
 ```

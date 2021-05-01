@@ -126,7 +126,7 @@ command_trsync_start(uint32_t *args)
     irq_enable();
 }
 DECL_COMMAND(command_trsync_start,
-             "trsync_start oid=%c report_time=%u report_ticks=%u"
+             "trsync_start oid=%c report_clock=%u report_ticks=%u"
              " expire_reason=%c");
 
 void
