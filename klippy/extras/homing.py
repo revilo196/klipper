@@ -51,10 +51,10 @@ class HomingMove:
         # Note start location
         self.toolhead.flush_step_generation()
         kin = self.toolhead.get_kinematics()
-        for s in kin.get_steppers():
-            s.set_tag_position(s.get_commanded_position())
+        kin_spos = {s.get_name(): s.get_commanded_position()
+                    for s in kin.get_steppers()}
         start_mcu_pos = [
-            (s, es, name, s.get_mcu_position(), s.get_tag_position())
+            (s, es, name, s.get_mcu_position(), s.get_commanded_position())
             for es, name in self.endstops
             for s in es.get_steppers() ]
         # Start endstop checking
@@ -95,19 +95,25 @@ class HomingMove:
              for s, es, name, spos, cpos in start_mcu_pos]
         if probe_pos:
             for s, es, name, spos, cpos, epos, tpos in self.end_mcu_pos:
-                s.set_tag_position(cpos + (tpos - spos) * s.get_step_dist())
-            trigpos = list(kin.calc_tag_position())[:3] + movepos[3:]
+                sname = s.get_name()
+                if sname in kin_spos:
+                    kin_spos[sname] = cpos + (tpos - spos) * s.get_step_dist()
+            trigpos = list(kin.calc_position(kin_spos))[:3] + movepos[3:]
             for s, es, name, spos, cpos, epos, tpos in self.end_mcu_pos:
-                s.set_tag_position(cpos + (epos - spos) * s.get_step_dist())
-            endpos = list(kin.calc_tag_position())[:3] + movepos[3:]
+                sname = s.get_name()
+                if sname in kin_spos:
+                    kin_spos[sname] = cpos + (epos - spos) * s.get_step_dist()
+            endpos = list(kin.calc_position(kin_spos))[:3] + movepos[3:]
         else:
             trigpos = movepos
             self.toolhead.set_position(movepos)
             # XXX - only calc new position if there is overshoot
             for s, es, name, spos, cpos, epos, tpos in self.end_mcu_pos:
-                s.set_tag_position(s.get_commanded_position()
-                                   + (epos - tpos) * s.get_step_dist())
-            endpos = list(kin.calc_tag_position())[:3] + movepos[3:]
+                sname = s.get_name()
+                if sname in kin_spos:
+                    npos = s.get_commanded_position()
+                    kin_spos[sname] = npos + (epos - tpos) * s.get_step_dist()
+            endpos = list(kin.calc_position(kin_spos))[:3] + movepos[3:]
         self.toolhead.set_position(endpos)
         # Signal homing/probing move complete
         try:
@@ -132,10 +138,13 @@ class Homing:
         self.printer = printer
         self.toolhead = printer.lookup_object('toolhead')
         self.changed_axes = []
+        self.kin_spos = {}
     def set_axes(self, axes):
         self.changed_axes = axes
     def get_axes(self):
         return self.changed_axes
+    def get_stepper_trigger_positions(self):
+        return self.kin_spos
     def _fill_coord(self, coord):
         # Fill in any None entries in 'coord' with current toolhead position
         thcoord = list(self.toolhead.get_position())
@@ -180,13 +189,14 @@ class Homing:
         # Signal home operation complete
         self.toolhead.flush_step_generation()
         kin = self.toolhead.get_kinematics()
-        for s in kin.get_steppers():
-            s.set_tag_position(s.get_commanded_position())
-        ret = self.printer.send_event("homing:home_rails_end", self, rails)
         # XXX - endstop_phases need update to use trigger pos
-        if any(ret):
+        kin_spos = {s.get_name(): s.get_commanded_position()
+                    for s in kin.get_steppers()}
+        self.kin_spos = dict(kin_spos)
+        self.printer.send_event("homing:home_rails_end", self, rails)
+        if kin_spos != self.kin_spos:
             # Apply any homing offsets
-            adjustpos = kin.calc_tag_position()
+            adjustpos = kin.calc_position(self.kin_spos)
             for axis in homing_axes:
                 movepos[axis] = adjustpos[axis]
             self.toolhead.set_position(movepos)
