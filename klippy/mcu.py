@@ -47,11 +47,11 @@ class MCU_trsync:
         # Setup config
         mcu.add_config_cmd("config_trsync oid=%d" % (self._oid,))
         mcu.add_config_cmd(
-            "trsync_start oid=%d report_time=0 report_ticks=0 expire_reason=0"
+            "trsync_start oid=%d report_clock=0 report_ticks=0 expire_reason=0"
             % (self._oid,), on_restart=True)
         # Lookup commands
         self._trsync_start_cmd = mcu.lookup_command(
-            "trsync_start oid=%c report_time=%u report_ticks=%u"
+            "trsync_start oid=%c report_clock=%u report_ticks=%u"
             " expire_reason=%c", cq=self._cmd_queue)
         self._trsync_set_timeout_cmd = mcu.lookup_command(
             "trsync_set_timeout oid=%c clock=%u", cq=self._cmd_queue)

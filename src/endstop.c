@@ -98,32 +98,19 @@ command_endstop_home(uint32_t *args)
 DECL_COMMAND(command_endstop_home,
              "endstop_home oid=%c clock=%u sample_ticks=%u sample_count=%c"
              " rest_ticks=%u pin_value=%c trsync_oid=%c trigger_reason=%c");
-             
-/*
-static void
-endstop_report(uint8_t oid, struct endstop *e)
-{
-    irq_disable();
-    uint8_t eflags = e->flags;
-    e->flags &= ~ESF_REPORT;
-    uint32_t nextwake = e->nextwake;
-    irq_enable();
-
-    sendf("endstop_state oid=%c homing=%c next_clock=%u pin_value=%c"
-          , oid, !!(eflags & ESF_HOMING), nextwake, gpio_in_read(e->pin));
-}
-*/
 
 void
 command_endstop_query_state(uint32_t *args)
 {
     uint8_t oid = args[0];
     struct endstop *e = oid_lookup(oid, command_config_endstop);
+
     irq_disable();
-    uint8_t flags = e->flags;
+    uint8_t eflags = e->flags;
     uint32_t nextwake = e->nextwake;
     irq_enable();
+
     sendf("endstop_state oid=%c homing=%c next_clock=%u pin_value=%c"
-          , oid, !!(flags & ESF_HOMING), nextwake, gpio_in_read(e->pin));
+          , oid, !!(eflags & ESF_HOMING), nextwake, gpio_in_read(e->pin));
 }
 DECL_COMMAND(command_endstop_query_state, "endstop_query_state oid=%c");

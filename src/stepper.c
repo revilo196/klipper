@@ -45,7 +45,6 @@ struct stepper {
     struct gpio_out step_pin, dir_pin;
     uint32_t position;
     struct move_queue_head mq;
-    uint32_t min_stop_interval;
     struct trsync_signal stop_signal;
     // gcc (pre v6) does better optimization when uint8_t are bitfields
     uint8_t flags : 8;
