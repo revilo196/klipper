@@ -4,7 +4,7 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import sys, os, zlib, logging, math
-import serialhdl, pins, chelper, clocksync
+import serialhdl, msgproto, pins, chelper, clocksync
 
 class error(Exception):
     pass
@@ -107,10 +107,11 @@ class MCU_trsync:
         self._mcu.register_response(self._handle_trsync_state,
                                     "trsync_state", self._oid)
         self._trsync_start_cmd.send([self._oid, clock, report_ticks,
-                                     self.REASON_COMMS_TIMEOUT])
+                                     self.REASON_COMMS_TIMEOUT], reqclock=clock)
         for s in self._steppers:
             self._stepper_stop_cmd.send([s.get_oid(), self._oid])
-        self._trsync_set_timeout_cmd.send([self._oid, expire_clock])
+        self._trsync_set_timeout_cmd.send([self._oid, expire_clock],
+                                          reqclock=expire_clock)
     def set_home_end_time(self, home_end_time):
         self._home_end_clock = self._mcu.print_time_to_clock(home_end_time)
     def stop(self):
@@ -199,15 +200,14 @@ class MCU_endstop:
         ffi_lib.trdispatch_stop(self._trdispatch)
         res = [trsync.stop() for trsync in self._trsyncs]
         if any([r == etrsync.REASON_COMMS_TIMEOUT for r in res]):
-            return False, True, 0.
+            return -1.
         if res[0] != etrsync.REASON_ENDSTOP_HIT:
-            return False, False, 0.
+            return 0.
         if self._mcu.is_fileoutput():
-            return True, False, home_end_time
+            return home_end_time
         params = self._query_cmd.send([self._oid])
         next_clock = self._mcu.clock32_to_clock64(params['next_clock'])
-        ttime = self._mcu.clock_to_print_time(next_clock - self._rest_ticks)
-        return True, False, ttime
+        return self._mcu.clock_to_print_time(next_clock - self._rest_ticks)
     def query_endstop(self, print_time):
         clock = self._mcu.print_time_to_clock(print_time)
         if self._mcu.is_fileoutput():
@@ -514,7 +514,8 @@ class MCU:
         if self._name.startswith('mcu '):
             self._name = self._name[4:]
         # Serial port
-        self._serial = serialhdl.SerialReader(self._reactor)
+        wp = "mcu '%s': " % (self._name)
+        self._serial = serialhdl.SerialReader(self._reactor, warn_prefix=wp)
         self._baud = 0
         self._canbus_iface = None
         canbus_uuid = config.get('canbus_uuid', None)
@@ -646,17 +647,26 @@ class MCU:
             raise error("MCU '%s' CRC does not match config" % (self._name,))
         # Transmit config messages (if needed)
         self.register_response(self._handle_starting, 'starting')
-        if prev_crc is None:
-            logging.info("Sending MCU '%s' printer configuration...",
-                         self._name)
-            for c in self._config_cmds:
+        try:
+            if prev_crc is None:
+                logging.info("Sending MCU '%s' printer configuration...",
+                             self._name)
+                for c in self._config_cmds:
+                    self._serial.send(c)
+            else:
+                for c in self._restart_cmds:
+                    self._serial.send(c)
+            # Transmit init messages
+            for c in self._init_cmds:
                 self._serial.send(c)
-        else:
-            for c in self._restart_cmds:
-                self._serial.send(c)
-        # Transmit init messages
-        for c in self._init_cmds:
-            self._serial.send(c)
+        except msgproto.enumeration_error as e:
+            enum_name, enum_value = e.get_enum_params()
+            if enum_name == 'pin':
+                # Raise pin name errors as a config error (not a protocol error)
+                raise self._printer.config_error(
+                    "Pin '%s' is not a valid pin name on mcu '%s'"
+                    % (enum_value, self._name))
+            raise
     def _send_get_config(self):
         get_config_cmd = self.lookup_query_command(
             "get_config",
@@ -910,7 +920,7 @@ class MCU:
                      self._name, eventtime)
         self._printer.invoke_shutdown("Lost communication with MCU '%s'" % (
             self._name,))
-    def get_status(self, eventtime):
+    def get_status(self, eventtime=None):
         return dict(self._get_status_info)
     def stats(self, eventtime):
         load = "mcu_awake=%.03f mcu_task_avg=%.06f mcu_task_stddev=%.06f" % (
