@@ -384,7 +384,7 @@ class MCU_pwm:
             "queue_digital_out oid=%c clock=%u on_ticks=%u", cq=cmd_queue,
             fast_track=self._is_ht)
         self._set_cycle_ticks = self._mcu.lookup_command(
-            "set_digital_out_pwm_cycle oid=%c cycle_ticks=%u", cq=None)
+            "set_digital_out_pwm_cycle oid=%c cycle_ticks=%u", cq=cmd_queue)
     def set_pwm(self, print_time, value, cycle_time=None):
         req_clock = self._mcu.print_time_to_clock(print_time)
         # FIXME: let sync_channel replace uncommitted values
