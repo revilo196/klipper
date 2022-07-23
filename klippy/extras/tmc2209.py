@@ -97,7 +97,7 @@ class TMC2209:
         set_config_field(config, "tpowerdown", 20)
         # SGTHRS
         set_config_field(config, "sgthrs", 0)
-        set_config_field(config, "internal_Rsense", 0)
+        set_config_field(config, "internal_rsense", 0)
 
 def load_config_prefix(config):
     return TMC2209(config)
