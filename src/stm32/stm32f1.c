@@ -257,6 +257,12 @@ usb_request_bootloader(void)
 /****************************************************************
  * Startup
  ****************************************************************/
+
+
+// Main entry point - called from armcm_boot.c:ResetHandler()
+void
+armcm_main(void)
+{
     SCB->VTOR = (uint32_t)VectorTable;
 
     // Reset peripheral clocks (for some bootloaders that don't)
