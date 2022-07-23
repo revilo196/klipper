@@ -256,7 +256,7 @@ usb_request_bootloader(void)
 
 /****************************************************************
  * Startup
- ****************************************************************/git merge --no-ff Klipper3d-master
+ ****************************************************************
     SCB->VTOR = (uint32_t)VectorTable;
 
     // Reset peripheral clocks (for some bootloaders that don't)
